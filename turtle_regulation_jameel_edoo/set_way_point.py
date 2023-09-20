@@ -20,7 +20,7 @@ if __name__ == "__main__":
     rospy.init_node("set_way_point")
 
     # Subscribe to the "pose" topic
-    rospy.Subscriber("pose", Pose, pose_callback)
+    rospy.Subscriber("/turtle1/pose", Pose, pose_callback)  # Use the correct topic name
 
     # Create a Twist message for cmd_vel
     cmd_vel_msg = Twist()
@@ -29,17 +29,20 @@ if __name__ == "__main__":
     Kp = rospy.get_param("~Kp", 1.0)
 
     # Create a Publisher for cmd_vel
-    cmd_vel_pub = rospy.Publisher("cmd_vel", Twist, queue_size=10)
+    cmd_vel_pub = rospy.Publisher("/turtle1/cmd_vel", Twist, queue_size=10)  # Use the correct topic name
 
     # Keep the node running
     rate = rospy.Rate(10)  # 10 Hz
     while not rospy.is_shutdown():
         if waypoint is not None:  # Check if waypoint is set
+            # Get the latest pose data from the topic
+            pose_data = rospy.wait_for_message("/turtle1/pose", Pose)
+
             # Calculate the desired angle (in radians) using atan2
-            desired_angle = math.atan2(waypoint[1] - data.y, waypoint[0] - data.x)
+            desired_angle = math.atan2(waypoint[1] - pose_data.y, waypoint[0] - pose_data.x)
 
             # Calculate the error e
-            e = math.atan(math.tan((desired_angle - data.theta) / 2))
+            e = math.atan(math.tan((desired_angle - pose_data.theta) / 2))
 
             # Calculate the control command u
             u = Kp * e
@@ -50,5 +53,5 @@ if __name__ == "__main__":
             # Publish cmd_vel
             cmd_vel_pub.publish(cmd_vel_msg)
 
-        rate.sleep()  # Maintain the loop rate
+    rate.sleep()  # Maintain the loop rate
 
