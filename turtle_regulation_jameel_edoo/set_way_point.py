@@ -1,57 +1,57 @@
 #!/usr/bin/env python3
 
 import rospy
-import math
-from turtlesim.msg import Pose  # Import the Pose message type
 from geometry_msgs.msg import Twist
+from turtlesim.msg import Pose
+from std_msgs.msg import Bool
+import math
 
-# Global variable to store the waypoint
-waypoint = None
-
-# Callback function to update waypoint
 def pose_callback(data):
-    global waypoint
-    # Update the waypoint variable with the desired coordinates (7,7)
-    waypoint = (7, 7)
-    rospy.loginfo("Waypoint updated to (%.2f, %.2f)", waypoint[0], waypoint[1])
+    global Kpl, distance_tolerance, waypoint, cmd_vel_pub, is_moving_pub
+
+    # Calculate Euclidean distance
+    distance = math.sqrt((waypoint[1] - data.y) ** 2 + (waypoint[0] - data.x) ** 2)
+
+    # Calculate linear error
+    el = distance - distance_tolerance
+
+    # Check if linear error is above distance tolerance
+    if el >= distance_tolerance:
+        # Calculate angular control (fixed Kp value)
+        Kp = 1.0  # You can set this value as needed
+        u = Kp * math.atan2(waypoint[1] - data.y, waypoint[0] - data.x)
+
+        # Calculate linear control (dynamic Kpl)
+        v = Kpl * el
+
+        # Create and publish Twist message with both angular and linear velocities
+        cmd_vel_msg = Twist()
+        cmd_vel_msg.angular.z = u
+        cmd_vel_msg.linear.x = v
+        cmd_vel_pub.publish(cmd_vel_msg)
+
+        # Publish True on 'is_moving' topic
+        is_moving_pub.publish(True)
+    else:
+        # Stop the turtle by sending zero velocity
+        cmd_vel_msg = Twist()
+        cmd_vel_pub.publish(cmd_vel_msg)
+        is_moving_pub.publish(False)
 
 if __name__ == "__main__":
-    # Initialize the ROS node
     rospy.init_node("set_way_point")
 
-    # Subscribe to the "pose" topic
-    rospy.Subscriber("/turtle1/pose", Pose, pose_callback)  # Use the correct topic name
+    # Load parameters
+    Kpl = rospy.get_param("~Kpl", 1.0)  # Proportional gain for linear control (dynamic)
+    distance_tolerance = 0.3  # Fixed distance tolerance
+    waypoint = (7, 7)  # Define your waypoint coordinates
 
-    # Create a Twist message for cmd_vel
-    cmd_vel_msg = Twist()
+    # Create subscribers and publishers
+    rospy.Subscriber("/turtle1/pose", Pose, pose_callback)
+    cmd_vel_pub = rospy.Publisher("/turtle1/cmd_vel", Twist, queue_size=10)
+    is_moving_pub = rospy.Publisher("/is_moving", Bool, queue_size=10)
 
-    # Define the proportional constant Kp as a private parameter (you can set it in the launch file)
-    Kp = rospy.get_param("~Kp", 1.0)
+    # Main control loop
+    rospy.spin()
 
-    # Create a Publisher for cmd_vel
-    cmd_vel_pub = rospy.Publisher("/turtle1/cmd_vel", Twist, queue_size=10)  # Use the correct topic name
-
-    # Keep the node running
-    rate = rospy.Rate(10)  # 10 Hz
-    while not rospy.is_shutdown():
-        if waypoint is not None:  # Check if waypoint is set
-            # Get the latest pose data from the topic
-            pose_data = rospy.wait_for_message("/turtle1/pose", Pose)
-
-            # Calculate the desired angle (in radians) using atan2
-            desired_angle = math.atan2(waypoint[1] - pose_data.y, waypoint[0] - pose_data.x)
-
-            # Calculate the error e
-            e = math.atan(math.tan((desired_angle - pose_data.theta) / 2))
-
-            # Calculate the control command u
-            u = Kp * e
-
-            # Set angular velocity in cmd_vel
-            cmd_vel_msg.angular.z = u
-
-            # Publish cmd_vel
-            cmd_vel_pub.publish(cmd_vel_msg)
-
-    rate.sleep()  # Maintain the loop rate
 

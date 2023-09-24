@@ -1,0 +1,11 @@
+<!-- set_way_point.launch -->
+<launch>
+  <!-- Default Kp value (can be overridden with command line or other launch files) -->
+  <param name="Kp" type="double" value="1.0"/>
+
+  <!-- Launch the set_way_point.py node -->
+  <node name="set_way_point_node" pkg="turtle_regulation_jameel_edoo" type="set_way_point.py" output="screen">
+    <!-- Pass the Kp parameter to the node -->
+    <param name="Kp" value="$(arg Kp)"/>
+  </node>
+</launch>

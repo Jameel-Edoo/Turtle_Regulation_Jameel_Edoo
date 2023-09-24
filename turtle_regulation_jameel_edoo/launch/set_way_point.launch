@@ -1,11 +1,11 @@
-<!-- set_way_point.launch -->
 <launch>
-  <!-- Default Kp value (can be overridden with command line or other launch files) -->
-  <param name="Kp" type="double" value="1.0"/>
+  <!-- Set the name of your package -->
+  <arg name="package_name" default="turtle_regulation_jameel_edoo" />
 
   <!-- Launch the set_way_point.py node -->
-  <node name="set_way_point_node" pkg="turtle_regulation_jameel_edoo" type="set_way_point.py" output="screen">
-    <!-- Pass the Kp parameter to the node -->
-    <param name="Kp" value="$(arg Kp)"/>
+  <node name="set_way_point_node" pkg="$(arg package_name)" type="set_way_point.py" output="screen">
+    <!-- Set the dynamic Kpl parameter (adjust the value as needed) -->
+    <param name="Kpl" type="double" value="1.0" />
   </node>
 </launch>
+
